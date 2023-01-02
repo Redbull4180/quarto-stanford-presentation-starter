@@ -1,0 +1,233 @@
+---
+title: "Nonlinear Model Predictive Control"
+subtitle: "Real Time Code Generation for"
+author: "Behzad Samadi"
+date: "3 December 2014"
+date-format: long
+bibliography: bibliography.bib
+format:
+  beamer:
+    pdf-engine: xelatex
+    fonttheme: structurebold
+    template: style/beamer.template
+    include-in-header: style/beamerheader.tex
+    include-before-body: style/beamerprefix.tex
+    include-after-body: style/beamersuffix.tex
+output:
+  beamer_presentation:
+    fonttheme: structurebold
+    includes:
+      in_header: style/beamerheader.tex
+      before_body: style/beamerprefix.tex
+      after_body: style/beamersuffix.tex
+---
+
+## Model Predictive Control (MPC) 
+- What is MPC?
+    - MPC is a **closed loop** implementation of **optimal control**.
+- Why not use a PID?    
+    - PID controllers do not perform well for highly nonlinear systems.
+    - To control a multi-input multi-output (MIMO) system, several PID controllers should be connected in a non-trivial configuration.
+    - Tuning PID controllers is not an easy task, especially given state and input constraints.
+    
+## Why MPC?
+- MPC can handle constraints on inputs and states.
+- MPC can be designed for MIMO nonlinear systems.
+- Tuning an MPC controller is much more intuitive comparing to a PID.
+- MPC is a systematic model based approach.
+- There are tools for generating code for MPC controllers automatically.
+
+![Automatice Code Generation](img/MPCCodeGen.pdf)
+
+
+## Example
+- A race driver needs to look forward! (**prediction**)
+- Minimize a cost function at each time instant depending on the current situation (**closed loop optimal control**)
+- Optimization constraints:
+    - Vehicle dynamics behavior
+    - Limited power
+    - No skidding
+    - Following the road
+    - Avoiding collision
+    
+\begin{center}
+\includegraphics{img/MPCroad.pdf}
+\end{center}
+
+## MPC Applications
+- Chemical process control
+    - Oil refineries
+    - Pulp and paper
+- Mechatronics
+    - Robotics
+    - Washing machines
+- Automotive
+    - Engine controllers
+- Aerospace
+    - Aircraft control
+    - Spacecraft formation and attitude control
+- Power generation
+- Computational biology
+
+## Nonlinear Model
+- Consider the following nonlinear system:
+\begin{align*}
+\dot x(t)=&f(x(t),u(t))\\
+x(t_0)=&x_\circ
+\end{align*}
+where:
+    - $x(t)$ is the state vector
+    - $u(t)$ is the input vector
+
+## Optimal Control Problem
+\begin{align*}
+\underset{u}{\text{minimize}}\ & J(x_0,t_0)=\phi(x(t_f))+\int_{t_0}^{t_f}L(x(\tau),u(\tau))d\tau \\
+\text{subject to} &\ \dot x(t)=f(x(t),u(t))\\
+                  &\ x(t_0)=x_\circ\\
+                  &\ g_i(x(t),u(t)) = 0, \text{ for }\ i=1,\ldots,n_g\\
+                  &\ h_i(x(t),u(t)) \leq 0, \text{ for }\ i=1,\ldots,n_h
+\end{align*}
+
+## Barrier Method
+- Using a particular *interior-point algorithm*, the *barrier method*, the inequality constraints are converted to equality constraints:
+\begin{align*}
+\underset{u,\alpha}{\text{minimize}} &\ \phi(x(t_f))+\int_{t_0}^{t_f}\left(L(x(\tau),u(\tau))-r^\text{T}\alpha(\tau) \right)d\tau\\
+\text{subject to} &\ \dot x(t)=f(x(t),u(t))\\
+                  &\ x(t_0)=x_\circ\\
+                  &\ g_i(x(t),u(t)) = 0, \text{ for }\ i=1,\ldots,n_g\\
+                  &\ h_i(x(t),u(t)) + \alpha_i(t)^2 = 0, \text{ for }\ i=1,\ldots,n_h\\
+\end{align*}
+where $\alpha(t)\in\mathbb{R}^{n_h}$ is a vector slack variable and the entries of $r\in\mathbb{R}^{n_h}$ are small positive numbers.
+
+
+[@boyd2004convex]
+
+\vspace{-2mm}
+[@diehl2009efficient]
+
+## Discretization
+- Discretize the problem into $N$ steps from $t_0$ to $t_f$:
+\begin{align*}
+\underset{u,\alpha}{\text{minimize}} &\ \phi_d(x_N)+\sum_{k=0}^{N-1}\left(L(x_k,u_k)-r^\text{T}\alpha_{k} \right)\\
+\text{subject to} &\ x_{k+1}=f_d(x_k,u_k)\\
+                  &\ x_0=x_\circ\\
+                  &\ g_i(x_k,u_k) = 0, \text{ for }\ i=1,\ldots,n_g\\
+                  &\ h_i(x_k,u_k) + \alpha_{ik}^2 = 0, \text{ for }\ i=1,\ldots,n_h\\
+\end{align*}
+where $\Delta\tau=\frac{t_f-t_0}{N}$ and:
+$$\phi(x_N,N)=\frac{\phi(x(t_f),t_f)}{\Delta\tau}$$
+$$f_d(x_k,u_k)=x_k+ f(x_k,u_k)\Delta\tau$$
+
+## Optimization Problem
+\begin{align*}
+\underset{u,\alpha}{\text{minimize}} &\ \phi_d(x_N)+\sum_{k=0}^{N-1}\left(L(x_k,u_k)-r^\text{T}\alpha_{k} \right)\\
+\text{subject to} &\ x_{k+1}=f_d(x_k,u_k)\\
+                  &\ x_0=x_\circ\\
+                  &\ G(x_k,u_k,\alpha_k) = 0
+\end{align*}
+where:
+$$ G(x_k,u_k,\alpha_k) = \left[\begin{array}{c}
+                g_1(x_k,u_k)\\
+                \vdots\\
+                g_{n_g}(x_k,u_k)\\
+                h_1(x_k,u_k) + \alpha_{1k}^2\\
+                \vdots\\
+                h_{n_h}(x_k,u_k) + \alpha_{n_hk}^2\\                
+                \end{array}\right]$$
+
+## Lagrange Multipliers
+- *Lagrangian*:
+\vspace{-5mm}
+\begin{align*}
+\mathcal{L}(x,u,\alpha,\lambda,\nu)= &\ \phi_d(x_N,N)+ (x_\circ-x_0)^\text{T}\lambda_0\\
+            &\ +\sum_{k=0}^{N-1}\left(L(x_k,u_k)-r^\text{T}\alpha_{k} \right.\\
+            &\ +(f_d(x_k,u_k)-x_{k+1})^\text{T}\lambda_{k+1}\\
+            &\ \left.+G(x_k,u_k,\alpha_k)^\text{T} \nu_{k} \right)
+\end{align*}
+- Optimality conditions:
+$$\mathcal{L}_{x_k}=0, \mathcal{L}_{\lambda_k}=0\ \text{for}\ k=0,\ldots,N$$
+$$\mathcal{L}_{\alpha_{k}}=0, \mathcal{L}_{u_k}=0, \mathcal{L}_{\nu_k}=0\ \text{for}\  k=0,\ldots,N-1$$
+
+## Hamiltonian
+- The Lagrangian can be rewritten as:
+\vspace{-5mm}
+\begin{align*}
+\mathcal{L}(x,u,\alpha,\lambda,\nu)= &\phi_d(x_N)+x_\circ^\text{T}\lambda_0-x_N^\text{T}\lambda_N\\
+            &\ +\sum_{k=0}^{N-1}\left(\mathcal{H}(x_k,u_k,\alpha_k,\lambda_{k+1})-x_{k}^\text{T}\lambda_k\right)
+\end{align*}
+- Hamiltonian:
+\begin{align*}
+\mathcal{H}(x_k,u_k,\alpha_k,\lambda_{k+1},\nu_k)=&L(x_k,u_k)-r^\text{T}\alpha_{k}\\
+            &\ +f_d(x_k,u_k)^\text{T}\lambda_{k+1}+G(x_k,u_k,\alpha_k)^\text{T} \nu_{k}
+\end{align*}
+
+## Pontryagin's Maximum Principle
+
+                                      Optimality Conditions
+--------------------------------     ---------------------------------------------------------------------------
+$\mathcal{L}_{\lambda_{k+1}}=0$       $x_{k+1}^\star=f_d(x_k^\star,u_k^\star)$
+$\mathcal{L}_{\lambda_0}=0$           $x_0^\star=x_\circ$
+$\mathcal{L}_{x_k}=0$                 $\lambda_k^\star=\mathcal{H}_x(x_k^\star,u_k^\star,\alpha_k^\star,\lambda_{k+1}^\star,\nu_k^\star)$
+$\mathcal{L}_{x_N}=0$                 $\lambda_N^\star=\frac{\partial}{\partial x_N}\phi_d(x_N^\star)$
+$\mathcal{L}_{u_k}=0$                 $\mathcal{H}_u(x_k^\star,u_k^\star,\alpha_k^\star,\lambda_{k+1}^\star,\nu_k^\star)=0$
+$\mathcal{L}_{\alpha_k}=0$            $\mathcal{H}_\alpha(x_k^\star,u_k^\star,\alpha_k^\star,\lambda_{k+1}^\star,\nu_k^\star)=0$
+$\mathcal{L}_{\nu_k}=0$               $G(x_k^\star,u_k^\star,\alpha_k^\star) = 0$
+
+for $k=0,\ldots,N-1$
+
+## Model Predictive Control
+- I understand optimal control but what is MPC?
+- MPC is the optimal controller in the loop:
+    1. Measure/estimate the current state $x_n$.
+    1. Solve the optimal control problem to compute $u_k$ for $k=n,\ldots,n+N-1$.
+    2. Return $u_n$ as the value of the control input.
+    3. Update $n$.
+    4. Goto step 1.
+- MPC is implemented in real time.
+
+## Continuation/GMRES Method
+- Step 1: Compute $x_k$ and $\lambda_k$ as a function of $u_k$ and $\alpha_k$, given the following equations:
+\begin{align*}
+x_{k+1}=&\ f_d(x_k,u_k)\\
+x_0=&\ x_n\\
+\lambda_k=&\ \mathcal{H}_x(x_k,u_k,\alpha_k,\lambda_{k+1},\nu_k)\\
+\lambda_N=&\ \frac{\partial}{\partial x_N}\phi_d(x_N)
+\end{align*}
+
+[@ohtsuka2004continuation]
+
+## Continuation/GMRES Method
+- Step 2: Solve the equation $F(x_n, U)=0$, where:
+$$
+F(x_n, U)=\left[\begin{array}{c}
+\mathcal{H}_u(x_0,u_0,\alpha_0,\lambda_1,\nu_0)\\
+\mathcal{H}_\alpha(x_0,u_0,\alpha_0,\lambda_1,\nu_0)\\
+G(x_0,u_0,\alpha_0)\\
+\vdots\\
+\mathcal{H}_u(x_{N-1},u_{N-1},\alpha_{N-1},\lambda_N,\nu_{N-1})\\
+\mathcal{H}_\alpha(x_{N-1},u_{N-1},\alpha_{N-1},\lambda_N,\nu_{N-1})\\
+G(x_{N-1},u_{N-1},\alpha_{N-1})\\
+\end{array}\right]
+$$
+where $U=[u_0^\text{T},\ldots,u_{N-1}^\text{T},\alpha_0^\text{T},\ldots,\alpha_{N-1}^\text{T},\nu_0^\text{T},\ldots,\nu_{N-1}^\text{T}]^\text{T}$
+
+[@ohtsuka2004continuation]
+
+## Continuation/GMRES Method
+- *Continuation method*: Instead of solving $F(x, U)=0$, find $U$ such that:
+$$\dot F(x, U)=A_sF(x, U)$$
+where $A_s$ is a matrix with negative eigenvalues.
+- Now, we have:
+$$F_x\dot x+F_U\dot U=A_sF(x, U)$$
+
+- *GMRES*: To compute $\dot U$ using the following equation, which is linear in $\dot U$, we use the generalized minimum residual (GMRES) algorithm.
+$$F_U\dot U=A_sF(x, U)-F_xf(x,u)$$
+- To compute $U$ at any given time, we need to have an initial value for $U$ and then use the above $\dot U$ to update it.
+
+[@ohtsuka2004continuation]
+
+## Example
+
+[@seguchi2003nonlinear]
+
+## References
