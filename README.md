@@ -7,7 +7,7 @@ The repository includes [a simple example file](beamer_slides.pdf) (with the [`.
 
 ## Example Slides
 
-![Example Slide 1](example_slides_img/example_slides-1.jpg "Example Slide 1")
-![Example Slide 2](example_slides_img/example_slides-2.jpg "Example Slide 2")
-![Example Slide 3](example_slides_img/example_slides-3.jpg "Example Slide 3")
-![Example Slide 4](example_slides_img/example_slides-4.jpg "Example Slide 4")
+![Example Slide 1](example_slides_snapshots/example_slides-1.jpg "Example Slide 1")
+![Example Slide 2](example_slides_snapshots/example_slides-2.jpg "Example Slide 2")
+![Example Slide 3](example_slides_snapshots/example_slides-3.jpg "Example Slide 3")
+![Example Slide 4](example_slides_snapshots/example_slides-4.jpg "Example Slide 4")
