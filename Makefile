@@ -1,3 +1,6 @@
+render:
+	quarto render stanford_slides.qmd
+
 pdf:
 	xelatex example_slides.tex
 
